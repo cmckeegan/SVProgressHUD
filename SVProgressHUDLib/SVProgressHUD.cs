@@ -153,6 +153,7 @@ namespace SVProgressHUDLib {
 //                      completion:NULL];
             }
 //    
+            
             this.SetNeedsDisplay();
         }
     }
