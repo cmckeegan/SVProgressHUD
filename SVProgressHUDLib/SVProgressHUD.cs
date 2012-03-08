@@ -2,6 +2,7 @@ using System;
 using MonoTouch.UIKit;
 using System.Drawing;
 using MonoTouch.CoreGraphics;
+using MonoTouch.Foundation;
 
 // MonoTouch Conversion of SVProgressHUD by Sam Vermette
 //
@@ -55,6 +56,7 @@ namespace SVProgressHUDLib {
             }
         }
         
+        private NSTimer fadeOutTimer;
         private SVProgressHUDMask mask;
         
         private UIView hudView;
@@ -69,6 +71,26 @@ namespace SVProgressHUDLib {
                     this.AddSubview(hudView);
                 }
                 return hudView;
+            }
+        }
+        
+        private UILabel stringLabel;
+        private UILabel StringLabel {
+            get {
+                if (stringLabel == null) {
+                    stringLabel = new UILabel();
+                    stringLabel.TextColor = UIColor.White;
+                    stringLabel.BackgroundColor = UIColor.Clear;
+                    stringLabel.AdjustsFontSizeToFitWidth = true;
+                    stringLabel.BaselineAdjustment = UIBaselineAdjustment.AlignCenters;
+                    stringLabel.Font = UIFont.BoldSystemFontOfSize(16f);
+                    stringLabel.ShadowColor = UIColor.Black;
+                    stringLabel.ShadowOffset = new SizeF(0, -1);
+                    stringLabel.Lines = 0;
+                    this.HudView.AddSubview(stringLabel);
+                }
+                
+                return stringLabel;
             }
         }
         
@@ -119,6 +141,31 @@ namespace SVProgressHUDLib {
             this.AutoresizingMask = UIViewAutoresizing.FlexibleWidth | UIViewAutoresizing.FlexibleHeight;
         }
         
+        public override void Draw (RectangleF rect) {
+            CGContext context = UIGraphics.GetCurrentContext();
+            
+            switch (this.mask) {
+                case SVProgressHUDMask.Black : {
+                    UIColor.FromWhiteAlpha(0f, 0.5f).SetColor();
+                    context.FillRect(this.Bounds);
+                    break;
+                }
+                case SVProgressHUDMask.Gradient: {
+                    float[] locations = new float[2] {0.0f, 1.0f};
+                    float[] colors = new float[8] {0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.75f}; 
+                    CGColorSpace colorSpace = CGColorSpace.CreateDeviceRGB();
+                    CGGradient gradient = new CGGradient(colorSpace, colors, locations);
+                    colorSpace.Dispose();
+                
+                    PointF center = new PointF(this.Bounds.Size.Width/2f, this.Bounds.Size.Height/2f);
+                    float radius = Math.Min(this.Bounds.Size.Width, this.Bounds.Size.Height);
+                    context.DrawRadialGradient(gradient, center, 0, center, radius, CGGradientDrawingOptions.DrawsAfterEndLocation);
+                    gradient.Dispose();
+                    break;
+                }
+            }
+        }
+        
         public static void Show () {
             throw new NotImplementedException ();
         }
@@ -139,11 +186,63 @@ namespace SVProgressHUDLib {
             throw new NotImplementedException ();
         }
         
+    
         private void SetStatus(string status) {
+            
+            float hudWidth = 100;
+            float hudHeight = 100;
+            RectangleF labelRect = RectangleF.Empty;
+            
+            if (status != null) {
+                SizeF stringSize = new NSString(status).StringSize(this.StringLabel.Font, new SizeF(200f, 300f));
+                hudHeight = 80 + stringSize.Height;
+                
+                if (stringSize.Width > hudWidth)
+                    hudWidth = (float) Math.Ceiling(stringSize.Width/2f) * 2f;
+                
+                if (hudHeight > 100) {
+                    labelRect = new RectangleF(12, 66, hudWidth, stringSize.Height);
+                    hudWidth += 24;
+                }
+                else {
+                    hudWidth += 24;
+                    labelRect = new RectangleF(0, 66, hudWidth, stringSize.Height);
+                }
+            }
+            
+            this.HudView.Bounds = new RectangleF(0, 0, hudWidth, hudHeight);
+            
+            if (status!=null) {
+                this.ImageView.Center = new PointF(this.HudView.Bounds.Width/2, 36);
+                this.SpinnerView.Center = new PointF((float) Math.Ceiling(this.HudView.Bounds.Width/2) + 0.5f, 40.5f);
+            }
+            else {
+                this.ImageView.Center = new PointF(this.HudView.Bounds.Width/2, this.HudView.Bounds.Height / 2);
+                this.SpinnerView.Center = new PointF((float) Math.Ceiling(this.HudView.Bounds.Width/2f) + 0.5f, (float)Math.Ceiling(this.HudView.Bounds.Height/2f) + 0.5f);
+            }
+            
+            this.StringLabel.Hidden = false;
+            this.StringLabel.Text = status;
+            this.StringLabel.Frame = labelRect;
+        }
+        
+        
+        private NSTimer FadeOutTimer {
+            get {
+                return fadeOutTimer;
+            }
+            set {
+                if (fadeOutTimer !=null) {
+                    fadeOutTimer.Invalidate();
+                    fadeOutTimer.Dispose();
+                }
+                
+                fadeOutTimer = value;
+            }
         }
         
         private void ShowInternal(string status, SVProgressHUDMask mask) {
-// self.fadeOutTimer = nil;
+            this.FadeOutTimer = null;
 // 
 //    if(self.showNetworkIndicator)
 //        [UIApplication sharedApplication].networkActivityIndicatorVisible = NO;
@@ -167,8 +266,6 @@ namespace SVProgressHUDLib {
             if (this.Alpha != 1f) {
 //        [self registerNotifications];
                 this.HudView.Transform = CGAffineTransform.MakeScale(1.3f, 1.3f);
-//     self.hudView.transform = CGAffineTransformScale(self.hudView.transform, 1.3, 1.3);
-//     
                 
                 UIView.Animate(0.15f, 0,UIViewAnimationOptions.AllowUserInteraction | UIViewAnimationOptions.CurveEaseOut | UIViewAnimationOptions.BeginFromCurrentState, () => {
                     this.HudView.Transform =CGAffineTransform.MakeScale(1/1.3f, 1/1.3f);
