@@ -166,6 +166,115 @@ namespace SVProgressHUDLib {
             }
         }
         
+        public void PositionHUD(NSNotification notification) {
+            float keyboardHeight = 0;
+            double animationDuration = 0;
+            
+            UIInterfaceOrientation orientation = UIApplication.SharedApplication.StatusBarOrientation;
+            
+            if (notification !=null) {
+                NSDictionary keyBoardInfo = notification.UserInfo;
+                RectangleF keyboardFrame = ((NSValue) keyBoardInfo[UIKeyboard.FrameBeginUserInfoKey]).RectangleFValue;
+                animationDuration = ((NSNumber)keyBoardInfo[UIKeyboard.AnimationDurationUserInfoKey]).DoubleValue;
+                
+                if (notification.Name == UIKeyboard.WillShowNotification || notification.Name ==  UIKeyboard.DidShowNotification) {
+                    if (orientation == UIInterfaceOrientation.Portrait || orientation == UIInterfaceOrientation.PortraitUpsideDown) 
+                        keyboardHeight = keyboardFrame.Size.Height;
+                    else
+                        keyboardHeight = keyboardFrame.Size.Width;
+                }
+            }
+            else {
+                keyboardHeight = this.VisibleKeyboardHeight();
+            }
+            
+            RectangleF orientationFrame = UIScreen.MainScreen.Bounds;
+            RectangleF statusBarFrame = UIApplication.SharedApplication.StatusBarFrame;
+            
+            if (orientation == UIInterfaceOrientation.LandscapeLeft || orientation == UIInterfaceOrientation.LandscapeRight) {
+                orientationFrame = new RectangleF(orientationFrame.Location, new SizeF(orientationFrame.Size.Height, orientationFrame.Size.Width));
+                statusBarFrame = new RectangleF(statusBarFrame.Location, new SizeF(statusBarFrame.Size.Height, statusBarFrame.Size.Width));
+            }
+            
+            float activeHeight = orientationFrame.Size.Height;
+            
+            if (keyboardHeight > 0)
+                activeHeight += statusBarFrame.Size.Height * 2;
+            
+            activeHeight -= keyboardHeight;
+            float posY = (float)Math.Floor(activeHeight * 0.45f);
+            float posX = orientationFrame.Size.Width / 2f;
+         
+            PointF newCenter;
+            float rotateAngle;
+            
+            switch (orientation) {
+                case UIInterfaceOrientation.PortraitUpsideDown:
+                    rotateAngle = (float) Math.PI;
+                    newCenter = new PointF(posX, orientationFrame.Size.Height - posY);
+                    break;
+                case UIInterfaceOrientation.LandscapeLeft:
+                    rotateAngle = - (float) Math.PI/2.0f;
+                    newCenter = new PointF(posY, posX);
+                    break;
+                case UIInterfaceOrientation.LandscapeRight:
+                    rotateAngle = (float) Math.PI/2.0f;
+                    newCenter = new PointF(orientationFrame.Size.Height - posY, posX);
+                    break;
+                default:
+                    rotateAngle = 0;
+                    newCenter = new PointF(posX, posY);
+                    break;
+            }
+            
+            if (notification !=null) {
+                UIView.Animate(animationDuration, 0, UIViewAnimationOptions.AllowUserInteraction, ()=>{
+                    this.MoveToPoint(newCenter, rotateAngle);    
+                }, 
+                ()=>{}); 
+            }
+            else {
+                MoveToPoint(newCenter, rotateAngle);
+            }
+        }
+        
+        private void MoveToPoint(PointF center, float angle) {
+            this.HudView.Transform = CGAffineTransform.MakeRotation(angle);
+            this.HudView.Center = center;
+        }
+        
+        
+        private float VisibleKeyboardHeight() {
+//            NSAutoreleasePool *autoreleasePool = [[NSAutoreleasePool alloc] init];
+            UIWindow keyboardWindow = null;
+            
+            foreach (var window in UIApplication.SharedApplication.Windows) {
+                if (Window.GetType() != typeof(UIWindow)) {
+                    keyboardWindow = Window;
+                    break;
+                }
+            }
+            
+            UIView foundKeyboard = null;
+            foreach (UIView possibleKeyboard in keyboardWindow.Subviews) {
+//                
+//                // iOS 4 sticks the UIKeyboard inside a UIPeripheralHostView.
+//                if ([[possibleKeyboard description] hasPrefix:@"<UIPeripheralHostView"]) {
+//                    possibleKeyboard = [[possibleKeyboard subviews] objectAtIndex:0];
+//                }                                                                                
+//                
+//                if ([[possibleKeyboard description] hasPrefix:@"<UIKeyboard"]) {
+//                    foundKeyboard = possibleKeyboard;
+//                    break;
+//                }
+            }
+//            [autoreleasePool release];
+            if (foundKeyboard != null && foundKeyboard.Bounds.Size.Height > 100)
+                return foundKeyboard.Bounds.Size.Height;
+            
+            return 0;
+        }
+        
         public static void Show () {
             throw new NotImplementedException ();
         }
