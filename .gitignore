@@ -2,3 +2,5 @@
 *.pidb
 *.dll
 *.dll.*
+*/bin/*
+*/obj/*

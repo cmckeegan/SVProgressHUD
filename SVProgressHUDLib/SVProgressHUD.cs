@@ -3,6 +3,7 @@ using MonoTouch.UIKit;
 using System.Drawing;
 using MonoTouch.CoreGraphics;
 using MonoTouch.Foundation;
+using MonoTouch.ObjCRuntime;
 
 // MonoTouch Conversion of SVProgressHUD by Sam Vermette
 //
@@ -63,7 +64,7 @@ namespace SVProgressHUDLib {
         private UIView HudView {
             get {
                 if (hudView == null) {
-                    hudView = new UIView();
+                    hudView = new UIView(RectangleF.Empty);
                     hudView.Layer.CornerRadius = 10;
                     hudView.BackgroundColor =  UIColor.FromWhiteAlpha(0f, 0.8f);        
                     hudView.AutoresizingMask = UIViewAutoresizing.FlexibleBottomMargin | UIViewAutoresizing.FlexibleTopMargin |
@@ -82,6 +83,7 @@ namespace SVProgressHUDLib {
                     stringLabel.TextColor = UIColor.White;
                     stringLabel.BackgroundColor = UIColor.Clear;
                     stringLabel.AdjustsFontSizeToFitWidth = true;
+                    stringLabel.TextAlignment = UITextAlignment.Center;
                     stringLabel.BaselineAdjustment = UIBaselineAdjustment.AlignCenters;
                     stringLabel.Font = UIFont.BoldSystemFontOfSize(16f);
                     stringLabel.ShadowColor = UIColor.Black;
@@ -131,9 +133,6 @@ namespace SVProgressHUDLib {
             }
         }
         
-        private SVProgressHUD() {
-        }
-        
         private SVProgressHUD (RectangleF frame): base(frame) {
             this.OverlayWindow.AddSubview(this);
             this.BackgroundColor = UIColor.Clear;
@@ -166,7 +165,8 @@ namespace SVProgressHUDLib {
             }
         }
         
-        public void PositionHUD(NSNotification notification) {
+        [Export("positionHUD:")]
+        private void PositionHUD(NSNotification notification) {
             float keyboardHeight = 0;
             double animationDuration = 0;
             
@@ -243,30 +243,39 @@ namespace SVProgressHUDLib {
             this.HudView.Center = center;
         }
         
-        
         private float VisibleKeyboardHeight() {
 //            NSAutoreleasePool *autoreleasePool = [[NSAutoreleasePool alloc] init];
             UIWindow keyboardWindow = null;
             
-            foreach (var window in UIApplication.SharedApplication.Windows) {
-                if (Window.GetType() != typeof(UIWindow)) {
-                    keyboardWindow = Window;
+            foreach (var w in UIApplication.SharedApplication.Windows) {
+                if (w.GetType() != typeof(UIWindow)) {
+                    keyboardWindow = w;
                     break;
                 }
             }
             
+            if (keyboardWindow == null) return 0f;
+            
             UIView foundKeyboard = null;
-            foreach (UIView possibleKeyboard in keyboardWindow.Subviews) {
-//                
+            foreach (UIView v in keyboardWindow.Subviews) {
+                var possibleKeyboard = v;
 //                // iOS 4 sticks the UIKeyboard inside a UIPeripheralHostView.
 //                if ([[possibleKeyboard description] hasPrefix:@"<UIPeripheralHostView"]) {
 //                    possibleKeyboard = [[possibleKeyboard subviews] objectAtIndex:0];
-//                }                                                                                
+//                }  
+                if (possibleKeyboard.ToString().Contains("UIPeripheralHostView")) {
+                    possibleKeyboard = possibleKeyboard.Subviews[0];
+                }
+                                                          
 //                
 //                if ([[possibleKeyboard description] hasPrefix:@"<UIKeyboard"]) {
 //                    foundKeyboard = possibleKeyboard;
 //                    break;
 //                }
+                if (possibleKeyboard.ToString ().Contains("UIKeyboard")) {
+                    foundKeyboard = possibleKeyboard;
+                    break;
+                }               
             }
 //            [autoreleasePool release];
             if (foundKeyboard != null && foundKeyboard.Bounds.Size.Height > 100)
@@ -280,7 +289,7 @@ namespace SVProgressHUDLib {
         }
 
         public static void Show (string status) {
-            throw new NotImplementedException ();
+            SharedView.ShowInternal(status, SVProgressHUDMask.None);
         }
         
         public static void Show (string status, SVProgressHUDMask mask) {
@@ -291,10 +300,37 @@ namespace SVProgressHUDLib {
             throw new NotImplementedException ();
         }
         
-        public static void Dismiss () {
-            throw new NotImplementedException ();
+        private void RegisterNotifications() {
+            NSNotificationCenter.DefaultCenter.AddObserver(this, new Selector("positionHUD:"), UIApplication.DidChangeStatusBarOrientationNotification, null);
+//    [[NSNotificationCenter defaultCenter] addObserver:self 
+//                                             selector:@selector(positionHUD:) 
+//                                                 name:UIApplicationDidChangeStatusBarOrientationNotification 
+//                                               object:nil];  
+            NSNotificationCenter.DefaultCenter.AddObserver(this, new Selector("positionHUD:"), UIKeyboard.WillHideNotification, null);
+//    [[NSNotificationCenter defaultCenter] addObserver:self 
+//                                             selector:@selector(positionHUD:) 
+//                                                 name:UIKeyboardWillHideNotification
+//                                               object:nil];
+            NSNotificationCenter.DefaultCenter.AddObserver(this, new Selector("positionHUD:"), UIKeyboard.DidHideNotification, null);
+//    [[NSNotificationCenter defaultCenter] addObserver:self 
+//                                             selector:@selector(positionHUD:) 
+//                                                 name:UIKeyboardDidHideNotification
+//                                               object:nil];
+            NSNotificationCenter.DefaultCenter.AddObserver(this, new Selector("positionHUD:"), UIKeyboard.WillShowNotification, null);
+//    [[NSNotificationCenter defaultCenter] addObserver:self 
+//                                             selector:@selector(positionHUD:) 
+//                                                 name:UIKeyboardWillShowNotification
+//                                               object:nil];
+            NSNotificationCenter.DefaultCenter.AddObserver(this, new Selector("positionHUD:"), UIKeyboard.DidShowNotification, null);
+//    [[NSNotificationCenter defaultCenter] addObserver:self 
+//                                             selector:@selector(positionHUD:) 
+//                                                 name:UIKeyboardDidShowNotification
+//                                               object:nil];
         }
         
+        public static void Dismiss () {
+            SharedView.DismissInternal();
+        }
     
         private void SetStatus(string status) {
             
@@ -370,28 +406,44 @@ namespace SVProgressHUDLib {
             this.OverlayWindow.UserInteractionEnabled = (this.mask!=SVProgressHUDMask.None);
             this.OverlayWindow.MakeKeyAndVisible();
             
-//    [self positionHUD:nil];
+            this.PositionHUD(null);
    
             if (this.Alpha != 1f) {
-//        [self registerNotifications];
+                RegisterNotifications();
                 this.HudView.Transform = CGAffineTransform.MakeScale(1.3f, 1.3f);
                 
                 UIView.Animate(0.15f, 0,UIViewAnimationOptions.AllowUserInteraction | UIViewAnimationOptions.CurveEaseOut | UIViewAnimationOptions.BeginFromCurrentState, () => {
-                    this.HudView.Transform =CGAffineTransform.MakeScale(1/1.3f, 1/1.3f);
+                    this.HudView.Transform =CGAffineTransform.MakeScale(1f, 1f);
                     this.Alpha = 1;
-            }, () => {});    
-//     [UIView animateWithDuration:0.15
-//                           delay:0
-//                         options:UIViewAnimationOptionAllowUserInteraction | UIViewAnimationCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
-//                      animations:^{  
-//                          self.hudView.transform = CGAffineTransformScale(self.hudView.transform, 1/1.3, 1/1.3);
-//                             self.alpha = 1;
-//                      }
-//                      completion:NULL];
+            }, 
+            () => {});    
             }
-//    
+
             
             this.SetNeedsDisplay();
+        }
+    
+        private void DismissInternal() {
+            UIView.Animate(0.15f, 0, UIViewAnimationOptions.CurveEaseIn | UIViewAnimationOptions.AllowUserInteraction,
+                           ()=>{
+                                SharedView.Transform = CGAffineTransform.MakeScale(0.8f, 0.8f);
+                                SharedView.Alpha = 0;
+                            }, 
+                            ()=>{
+                                if (SharedView.Alpha == 0) {
+                                    NSNotificationCenter.DefaultCenter.RemoveObserver(SharedView);
+                                    overlayWindow.Dispose();
+                                    overlayWindow = null;
+                                    sharedView.Dispose();
+                                    sharedView = null;
+                                }
+                                foreach (UIWindow w in UIApplication.SharedApplication.Windows) {
+                                    if (w.WindowLevel == UIWindow.LevelNormal) {
+                                        w.MakeKeyWindow();
+                                        break;
+                                    }    
+                                }
+                            });
         }
     }
 }
