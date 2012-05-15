@@ -135,6 +135,7 @@ namespace SVProgressHUDLib {
         
         private SVProgressHUD (RectangleF frame): base(frame) {
             this.OverlayWindow.AddSubview(this);
+            this.UserInteractionEnabled = false;
             this.BackgroundColor = UIColor.Clear;
             this.Alpha = 0;
             this.AutoresizingMask = UIViewAutoresizing.FlexibleWidth | UIViewAutoresizing.FlexibleHeight;
@@ -240,8 +241,9 @@ namespace SVProgressHUDLib {
         }
         
         private void MoveToPoint(PointF center, float angle) {
-            this.HudView.Transform = CGAffineTransform.MakeRotation(angle);
             this.HudView.Center = center;
+            this.HudView.Transform = CGAffineTransform.MakeRotation(angle);
+            this.HudView.Transform.Multiply(CGAffineTransform.MakeScale(1f,1f));
         }
         
         private float VisibleKeyboardHeight() {
@@ -389,14 +391,6 @@ namespace SVProgressHUDLib {
         
         private void ShowInternal(string status, SVProgressHUDMask mask) {
             this.FadeOutTimer = null;
-// 
-//    if(self.showNetworkIndicator)
-//        [UIApplication sharedApplication].networkActivityIndicatorVisible = NO;
-//    
-//    self.showNetworkIndicator = show;
-//    
-//    if(self.showNetworkIndicator)
-//        [UIApplication sharedApplication].networkActivityIndicatorVisible = YES;
             
             this.ImageView.Hidden = true;
             this.mask = mask;
@@ -411,10 +405,15 @@ namespace SVProgressHUDLib {
    
             if (this.Alpha != 1f) {
                 RegisterNotifications();
-                this.HudView.Transform = CGAffineTransform.MakeScale(1.3f, 1.3f);
+                var transform = this.HudView.Transform;
+                transform.Scale(1.3f,1.3f);
+                this.HudView.Transform = transform;
                 
                 UIView.Animate(0.15f, 0, UIViewAnimationOptions.AllowUserInteraction | UIViewAnimationOptions.CurveEaseOut | UIViewAnimationOptions.BeginFromCurrentState, () => {
-                    this.HudView.Transform =CGAffineTransform.MakeScale(1f, 1f);
+                    
+                    var normal = this.HudView.Transform;
+                    normal.Scale(1/1.3f,1/1.3f);
+                    this.HudView.Transform = normal;
                     this.Alpha = 1;
             }, 
             () => {});    
@@ -427,7 +426,10 @@ namespace SVProgressHUDLib {
         private void DismissInternal() {
             UIView.Animate(0.15f, 0, UIViewAnimationOptions.CurveEaseIn | UIViewAnimationOptions.AllowUserInteraction,
                            ()=>{
-                                SharedView.Transform = CGAffineTransform.MakeScale(0.8f, 0.8f);
+                
+                                var small = this.HudView.Transform;
+                                small.Scale(0.8f, 0.8f);
+                                SharedView.HudView.Transform = small;
                                 SharedView.Alpha = 0;
                             }, 
                             ()=>{
