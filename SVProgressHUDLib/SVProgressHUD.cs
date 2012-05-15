@@ -173,11 +173,12 @@ namespace SVProgressHUDLib {
             UIInterfaceOrientation orientation = UIApplication.SharedApplication.StatusBarOrientation;
             
             if (notification !=null) {
-                NSDictionary keyBoardInfo = notification.UserInfo;
-                RectangleF keyboardFrame = ((NSValue) keyBoardInfo[UIKeyboard.FrameBeginUserInfoKey]).RectangleFValue;
-                animationDuration = ((NSNumber)keyBoardInfo[UIKeyboard.AnimationDurationUserInfoKey]).DoubleValue;
-                
                 if (notification.Name == UIKeyboard.WillShowNotification || notification.Name ==  UIKeyboard.DidShowNotification) {
+                    
+                    NSDictionary keyBoardInfo = notification.UserInfo;
+                    RectangleF keyboardFrame = ((NSValue) keyBoardInfo[UIKeyboard.FrameBeginUserInfoKey]).RectangleFValue;
+                    animationDuration = ((NSNumber)keyBoardInfo[UIKeyboard.AnimationDurationUserInfoKey]).DoubleValue;
+                
                     if (orientation == UIInterfaceOrientation.Portrait || orientation == UIInterfaceOrientation.PortraitUpsideDown) 
                         keyboardHeight = keyboardFrame.Size.Height;
                     else
@@ -412,7 +413,7 @@ namespace SVProgressHUDLib {
                 RegisterNotifications();
                 this.HudView.Transform = CGAffineTransform.MakeScale(1.3f, 1.3f);
                 
-                UIView.Animate(0.15f, 0,UIViewAnimationOptions.AllowUserInteraction | UIViewAnimationOptions.CurveEaseOut | UIViewAnimationOptions.BeginFromCurrentState, () => {
+                UIView.Animate(0.15f, 0, UIViewAnimationOptions.AllowUserInteraction | UIViewAnimationOptions.CurveEaseOut | UIViewAnimationOptions.BeginFromCurrentState, () => {
                     this.HudView.Transform =CGAffineTransform.MakeScale(1f, 1f);
                     this.Alpha = 1;
             }, 
