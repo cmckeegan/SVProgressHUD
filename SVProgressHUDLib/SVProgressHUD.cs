@@ -288,19 +288,19 @@ namespace SVProgressHUDLib {
         }
         
         public static void Show () {
-            throw new NotImplementedException ();
+            Show(null, SVProgressHUDMask.None);
         }
 
         public static void Show (string status) {
-            SharedView.ShowInternal(status, SVProgressHUDMask.None);
+            Show(status, SVProgressHUDMask.None);
         }
         
         public static void Show (string status, SVProgressHUDMask mask) {
-            throw new NotImplementedException ();
+            SharedView.ShowInternal(status, mask);
         }
 
         public static void Show (SVProgressHUDMask mask) {
-            throw new NotImplementedException ();
+            Show(null, mask);
         }
         
         private void RegisterNotifications() {
