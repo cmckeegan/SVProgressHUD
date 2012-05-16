@@ -33,7 +33,10 @@ namespace SVHUDDemo {
                 SVProgressHUD.Dismiss();
             };
             this.dismissSuccess.TouchUpInside += (sender, e) => {
-                //SVProgressHUD.DismissSuccess();
+                SVProgressHUD.DismissWithSuccess("Success");
+            };
+            this.dismissError.TouchUpInside += (sender, e) => {
+                SVProgressHUD.DismissWithError("Failed!");
             };
         }
         

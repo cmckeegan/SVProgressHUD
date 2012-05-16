@@ -39,4 +39,13 @@
   <ItemGroup>
     <Compile Include="SVProgressHUD.cs" />
   </ItemGroup>
+  <ItemGroup>
+    <Folder Include="SVProgressHUD.bundle\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="SVProgressHUD.bundle\error.png" />
+    <Content Include="SVProgressHUD.bundle\error%402x.png" />
+    <Content Include="SVProgressHUD.bundle\success.png" />
+    <Content Include="SVProgressHUD.bundle\success%402x.png" />
+  </ItemGroup>
 </Project>

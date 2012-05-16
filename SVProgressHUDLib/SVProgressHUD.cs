@@ -334,6 +334,22 @@ namespace SVProgressHUDLib {
         public static void Dismiss () {
             SharedView.DismissInternal();
         }
+        
+        public static void DismissWithSuccess(string text) {
+            DismissWithSuccess(text, 0.9f);    
+        }
+        
+        public static void DismissWithSuccess(string text, float delay) {
+            SharedView.DismissWithStatus(text, false, delay);  
+        }
+        
+        public static void DismissWithError(string text) {
+            DismissWithError(text, 0.9f);    
+        }
+        
+        public static void DismissWithError(string text, float delay) {
+            SharedView.DismissWithStatus(text, true, delay);  
+        }
     
         private void SetStatus(string status) {
             
@@ -447,6 +463,17 @@ namespace SVProgressHUDLib {
                                     }    
                                 }
                             });
+        }
+        
+        private void DismissWithStatus(string text, bool error, float delay) {
+            if (this.Alpha != 1) return;
+            
+            this.ImageView.Image = UIImage.FromBundle(error ? @"SVProgressHUD.bundle/error.png" : @"SVProgressHUD.bundle/success.png");
+            this.ImageView.Hidden = false;
+            this.SetStatus(text);
+            this.SpinnerView.StopAnimating();
+            
+            this.FadeOutTimer = NSTimer.CreateScheduledTimer(delay, ()=>DismissInternal());
         }
     }
 }
